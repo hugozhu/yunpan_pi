@@ -146,11 +146,11 @@ func (c *Client) CommitUpload(id int64, version int64) (*FileInfo, error) {
 	return &fileInfo, err
 }
 
-func parse_fileinfo_result(result []byte, msg string) (*FileInfo, error) {
+func parse_fileinfo_result(result []byte, f func() string) (*FileInfo, error) {
 	var fileInfo FileInfo
 	err := json.Unmarshal(result, &fileInfo)
 	if !fileInfo.Suc {
-		return nil, ApiError{ErrorCode: int64(fileInfo.ResultCode), ErrorDescription: msg}
+		return nil, ApiError{ErrorCode: int64(fileInfo.ResultCode), ErrorDescription: f()}
 	}
 	return &fileInfo, err
 }
@@ -162,7 +162,7 @@ func (c *Client) RemoveFile(id int64) (*FileInfo, error) {
 	if err != nil {
 		return nil, err
 	}
-	return parse_fileinfo_result(result, func() { return fmt.Sprintf("Failed to remove file: %d", id) })
+	return parse_fileinfo_result(result, func() string { return fmt.Sprintf("Failed to remove file: %d", id) })
 }
 
 func (c *Client) MoveFile(id int64, dirId int64) (*FileInfo, error) {
