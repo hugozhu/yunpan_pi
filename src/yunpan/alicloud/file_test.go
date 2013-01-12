@@ -1,9 +1,11 @@
 package alicloud
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
 	"testing"
+	"time"
 )
 
 func create_file(name string, size int) (string, error) {
@@ -16,7 +18,7 @@ func create_file(name string, size int) (string, error) {
 
 	buf := make([]byte, size)
 	for i := 0; i < size; i++ {
-		buf[i] = 0
+		buf[i] = byte(i)
 	}
 	file.Write(buf)
 
@@ -24,7 +26,7 @@ func create_file(name string, size int) (string, error) {
 }
 
 func TestFileUpload(t *testing.T) {
-	file := filepath.Join(os.Getenv("PWD"), client.LocalBaseDir, "testfile 123.txt")
+	file := filepath.Join(os.Getenv("PWD"), client.LocalBaseDir, fmt.Sprintf("testfile_%d.txt", time.Now().Unix()))
 	create_file(file, 1024)
 	t.Log(file)
 	fileInfo, err := client.CreateFile(0, file)
