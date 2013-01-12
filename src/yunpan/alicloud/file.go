@@ -153,3 +153,59 @@ func (c *Client) FileRemove(id int64) (*FileInfo, error) {
 	json.Unmarshal(result, &fileInfo)
 	return &fileInfo, err
 }
+
+func (c *Client) FileInfo(fileId int64, fullName string, operation int) (*FileInfo, error) {
+	params := &url.Values{}
+	params.Set("fileId", fmt.Sprintf("%d", fileId))
+	params.Set("fullName", fullName)
+	params.Set("operation", fmt.Sprintf("%d", operation))
+	result, err := c.PostCall("/file/info", params)
+	if err != nil {
+		return nil, err
+	}
+	var fileInfo FileInfo
+	json.Unmarshal(result, &fileInfo)
+	return &fileInfo, err
+}
+
+func (c *Client) DownloadChunk(chunkId int64) ([]byte, error) {
+	params := &url.Values{}
+	params.Set("chunkId", fmt.Sprintf("%d", chunkId))
+	return c.GetCall("/download/chunk", params)
+}
+
+func (c *Client) DownloadFile(fileInfo *FileInfo, dirPath string) {
+	f, err1 := os.OpenFile(filepath.Join(c.LocalBaseDir, dirPath, fileInfo.FileName+"."+fileInfo.Extension),
+		os.O_RDWR|os.O_CREATE|os.O_TRUNC, os.FileMode(fileInfo.FileAttribute))
+	if err1 != nil {
+		panic(err1)
+	}
+	defer f.Close()
+
+	w := bufio.NewWriterSize(f, 1024*8)
+
+	for _, chunk := range fileInfo.Chunks {
+		bytes, _ := c.DownloadChunk(chunk.Id)
+		s := string(bytes[1 : len(bytes)-1])
+		bytes, _ = base64.StdEncoding.DecodeString(s)
+		n, err := w.Write(bytes)
+		if err != nil || n != len(bytes) {
+			panic(err)
+		}
+		w.Flush()
+	}
+}
+
+func (c *Client) DownloadFolder(dirId int64, dirPath string) {
+	fileList, _ := c.FolderList(dirId)
+	for _, file := range fileList.Files {
+		fileInfo, _ := c.FileInfo(file.Id, "", 3)
+		debug(filepath.Join(dirPath, fileInfo.FileName+"."+fileInfo.Extension))
+		c.DownloadFile(fileInfo, dirPath)
+	}
+
+	for _, dir := range fileList.Dirs {
+		debug(filepath.Join(dirPath, dir.Name))
+		c.DownloadFolder(dir.Id, filepath.Join(dirPath, dir.Name))
+	}
+}
