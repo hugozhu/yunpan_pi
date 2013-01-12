@@ -41,13 +41,11 @@ func TestFileUpload(t *testing.T) {
 		r, e := client.UploadChunk(chunk.Id, chunk.Size, file, 0, chunk.Size)
 		if !r || e != nil {
 			succ = false
-			break
+			t.Error(e)
 		}
 	}
 
 	if succ {
 		client.CommitUpload(fileInfo.Id, fileInfo.UpdateVersion)
-	} else {
-		t.Error("Failed to upload file")
 	}
 }
