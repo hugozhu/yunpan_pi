@@ -98,20 +98,29 @@ func makeChunks(file string) ([]*Chunk, string) {
 	return chunks, md5_str
 }
 
-func (c *Client) UploadChunk(chunkId int64, size int64, file string, offset int64, length int64) (bool, error) {
+func (c *Client) UploadChunk(chunkId int64, file string, offset int64, length int64) (bool, error) {
+	if length > DEFAULT_CHUNK_SIZE {
+		panic(fmt.Sprintf("%s is larger than the default chunk size %s", length/1024/1024, DEFAULT_CHUNK_SIZE/1024/1024))
+	}
 	f, err := os.Open(file)
 	if err != nil {
 		panic(err)
 	}
 	defer f.Close()
 
+	stat, _ := f.Stat()
+	if stat.Size() < offset+length {
+		panic(fmt.Sprintf("illegal argument offset: %d + size: %d > file length: %d", offset, length, stat.Size()))
+	}
+
 	f.Seek(offset, os.SEEK_SET)
+
 	buf := make([]byte, length)
 	f.Read(buf)
 
 	params := &url.Values{}
 	params.Set("chunkId", fmt.Sprintf("%d", chunkId))
-	params.Set("size", fmt.Sprintf("%d", size))
+	params.Set("size", fmt.Sprintf("%d", length))
 
 	result, _ := c.UploadCall("/upload/chunk", params, "chunk", filepath.Base(file), bytes.NewReader(buf))
 	if bytes.Contains(result, []byte("true")) {

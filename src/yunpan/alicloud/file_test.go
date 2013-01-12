@@ -27,22 +27,29 @@ func create_file(name string, size int) (string, error) {
 
 func TestFileUpload(t *testing.T) {
 	file := filepath.Join(os.Getenv("PWD"), client.LocalBaseDir, fmt.Sprintf("testfile_%d.txt", time.Now().Unix()))
-	create_file(file, 1024)
-	t.Log(file)
+	create_file(file, DEFAULT_CHUNK_SIZE*2+1024)
+	t.Log("prepare file:", file)
 	fileInfo, err := client.CreateFile(0, file)
 	if err != nil {
-		t.Error("got api err " + err.Error())
+		t.Fatal("remote api error " + err.Error())
 	}
 	defer func() {
 		client.FileRemove(fileInfo.Id)
 	}()
 	succ := true
+
+	if len(fileInfo.Chunks) != 3 {
+		t.Fatal("the number of chunks is not as expected")
+	}
+
+	var offset int64
 	for _, chunk := range fileInfo.Chunks {
-		r, e := client.UploadChunk(chunk.Id, chunk.Size, file, 0, chunk.Size)
+		r, e := client.UploadChunk(chunk.Id, file, offset, chunk.Size)
 		if !r || e != nil {
 			succ = false
-			t.Error(e)
+			t.Fatal(e)
 		}
+		offset += chunk.Size
 	}
 
 	if succ {
