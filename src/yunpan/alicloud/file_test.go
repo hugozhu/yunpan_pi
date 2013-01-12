@@ -38,7 +38,7 @@ func TestFileUpload(t *testing.T) {
 	defer func() {
 		os.Remove(file)
 		os.Remove(downloaded_file)
-		client.FileRemove(fileInfo.Id)
+		client.RemoveFile(fileInfo.Id)
 	}()
 
 	// if len(fileInfo.Chunks) != 3 {

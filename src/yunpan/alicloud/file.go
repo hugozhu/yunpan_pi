@@ -146,7 +146,7 @@ func (c *Client) CommitUpload(id int64, version int64) (*FileInfo, error) {
 	return &fileInfo, err
 }
 
-func (c *Client) FileRemove(id int64) (*FileInfo, error) {
+func (c *Client) RemoveFile(id int64) (*FileInfo, error) {
 	params := &url.Values{}
 	params.Set("id", fmt.Sprintf("%d", id))
 	result, err := c.PostCall("/file/remove", params)
@@ -155,6 +155,44 @@ func (c *Client) FileRemove(id int64) (*FileInfo, error) {
 	}
 	var fileInfo FileInfo
 	json.Unmarshal(result, &fileInfo)
+	if !fileInfo.Suc {
+		return nil, ApiError{ErrorCode: 0, ErrorDescription: fmt.Sprintf("Failed to remove file: %d", id)}
+	}
+	return &fileInfo, err
+}
+
+func (c *Client) MoveFile(id int64, dirId int64) (*FileInfo, error) {
+	params := &url.Values{}
+	params.Set("id", fmt.Sprintf("%d", id))
+	params.Set("dirId", fmt.Sprintf("%d", dirId))
+
+	result, err := c.PostCall("/file/move", params)
+	if err != nil {
+		return nil, err
+	}
+	var fileInfo FileInfo
+	json.Unmarshal(result, &fileInfo)
+	if !fileInfo.Suc {
+		return nil, ApiError{ErrorCode: 0, ErrorDescription: fmt.Sprintf("Failed to move file: %d %d", id, dirId)}
+	}
+	return &fileInfo, err
+}
+
+func (c *Client) RenameFile(id int64, newName string) (*FileInfo, error) {
+	params := &url.Values{}
+	params.Set("id", fmt.Sprintf("%d", id))
+	params.Set("newName", filepath.Base(newName))
+	params.Set("extension", filepath.Ext(newName))
+
+	result, err := c.PostCall("/file/rename", params)
+	if err != nil {
+		return nil, err
+	}
+	var fileInfo FileInfo
+	json.Unmarshal(result, &fileInfo)
+	if !fileInfo.Suc {
+		return nil, ApiError{ErrorCode: 0, ErrorDescription: fmt.Sprintf("Failed to rename file: %d %s", id, newName)}
+	}
 	return &fileInfo, err
 }
 
