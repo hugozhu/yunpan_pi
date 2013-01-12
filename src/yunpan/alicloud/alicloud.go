@@ -62,7 +62,7 @@ type FileInfo struct {
 	DirId         int64    `json:"dirId"`
 	Direct        bool     `json:"direct"`
 	Extension     string   `json:"extension"`
-	FileAttribute int
+	FileAttribute int32
 	FileName      string `json:"fileName"`
 	FullName      string `json:"fullName"`
 	Id            int64  `json:"id"`
@@ -72,9 +72,9 @@ type FileInfo struct {
 	PlatformInfo  int    `json:"platformInfo"`
 	ResultCode    int    `json:"resultCode"`
 	Size          int64  `json:"size"`
-	Suc           bool   `json:"-"`
+	Suc           bool   `json:"suc"`
 	UpdateVersion int64  `json:"updateVersion"`
-	Version       int64  `json:"-"`
+	Version       int64  `json:"version"`
 }
 
 type Chunk struct {

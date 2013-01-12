@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"bytes"
 	"crypto/md5"
+	"encoding/base64"
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
@@ -16,28 +17,31 @@ import (
 func (c *Client) CreateFile(dirId int64, file string) (*FileInfo, error) {
 	filename := filepath.Base(file)
 	extension := filepath.Ext(file)
+
 	tmp, err := os.Stat(file)
+	perm := tmp.Mode().Perm()
 	if err != nil {
 		panic(err)
 	}
 	size := tmp.Size()
-	modTime := tmp.ModTime().Unix()
+	modTime := tmp.ModTime().Unix() * 1000
 	ext := extension
 	if len(ext) > 0 {
 		ext = ext[1:]
 	}
 	chunks, md5 := makeChunks(file)
 	f := &FileInfo{
-		DirId:        dirId,
-		FileName:     filename[0 : len(filename)-len(extension)],
-		ChangedBy:    61401,
-		Extension:    ext,
-		FullName:     filename,
-		Md5:          md5,
-		PlatformInfo: 0,
-		Size:         size,
-		ModifyTime:   modTime,
-		Chunks:       chunks,
+		DirId:         dirId,
+		FileName:      filename[0 : len(filename)-len(extension)],
+		ChangedBy:     61401,
+		Extension:     ext,
+		FullName:      filename,
+		Md5:           md5,
+		PlatformInfo:  0,
+		Size:          size,
+		ModifyTime:    modTime,
+		Chunks:        chunks,
+		FileAttribute: int32(perm),
 	}
 
 	j, _ := json.Marshal(f)
@@ -165,6 +169,9 @@ func (c *Client) FileInfo(fileId int64, fullName string, operation int) (*FileIn
 	}
 	var fileInfo FileInfo
 	json.Unmarshal(result, &fileInfo)
+	if !fileInfo.Suc {
+		return nil, ApiError{ErrorCode: 0, ErrorDescription: fmt.Sprintf("Failed to query file info: %d %s", fileId, fullName)}
+	}
 	return &fileInfo, err
 }
 
@@ -174,26 +181,40 @@ func (c *Client) DownloadChunk(chunkId int64) ([]byte, error) {
 	return c.GetCall("/download/chunk", params)
 }
 
-func (c *Client) DownloadFile(fileInfo *FileInfo, dirPath string) {
-	f, err1 := os.OpenFile(filepath.Join(c.LocalBaseDir, dirPath, fileInfo.FileName+"."+fileInfo.Extension),
-		os.O_RDWR|os.O_CREATE|os.O_TRUNC, os.FileMode(fileInfo.FileAttribute))
-	if err1 != nil {
-		panic(err1)
+func (c *Client) DownloadFile(fileInfo *FileInfo, file_path string) error {
+	if file_path == "" {
+		if fileInfo.Extension != "" {
+			file_path = fileInfo.FileName + "." + fileInfo.Extension
+		} else {
+			file_path = fileInfo.FileName
+		}
+	}
+	perm := fileInfo.FileAttribute
+	if perm < 1 {
+		perm = 0755
+	}
+	f, err := os.OpenFile(file_path, os.O_RDWR|os.O_CREATE|os.O_TRUNC, os.FileMode(perm))
+	if err != nil {
+		panic(err)
 	}
 	defer f.Close()
 
 	w := bufio.NewWriterSize(f, 1024*8)
 
 	for _, chunk := range fileInfo.Chunks {
-		bytes, _ := c.DownloadChunk(chunk.Id)
+		bytes, err2 := c.DownloadChunk(chunk.Id)
+		if err2 != nil {
+			return err
+		}
 		s := string(bytes[1 : len(bytes)-1])
 		bytes, _ = base64.StdEncoding.DecodeString(s)
 		n, err := w.Write(bytes)
 		if err != nil || n != len(bytes) {
 			panic(err)
 		}
-		w.Flush()
+		err = w.Flush()
 	}
+	return err
 }
 
 func (c *Client) DownloadFolder(dirId int64, dirPath string) {
