@@ -25,7 +25,7 @@ type FileList struct {
 	ErrorCode int
 	HasError  bool
 	Files     []*File
-	Dirs      []*Dir
+	Dirs      []*Folder
 }
 
 type Operationable struct {
@@ -34,7 +34,7 @@ type Operationable struct {
 	Suc        bool
 }
 
-type Dir struct {
+type Folder struct {
 	Name       string
 	Id         int64
 	ModifyTime int32
