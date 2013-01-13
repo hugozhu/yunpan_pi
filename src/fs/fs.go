@@ -1,6 +1,7 @@
 package fs
 
 import (
+	"io/ioutil"
 	"os"
 	"time"
 )
@@ -19,4 +20,21 @@ func Exists(path string) (bool, error) {
 func ChangeModTime(path string, unix_time int64) error {
 	mtime := time.Unix(unix_time, 0)
 	return os.Chtimes(path, mtime, mtime)
+}
+
+func ListFiles(path string) ([]os.FileInfo, []os.FileInfo, error) {
+	files, err := ioutil.ReadDir(path)
+	if err != nil {
+		return nil, nil, err
+	}
+	dirList := make([]os.FileInfo, 0)
+	fileList := make([]os.FileInfo, 0)
+	for _, f := range files {
+		if f.IsDir() {
+			dirList = append(dirList, f)
+		} else {
+			fileList = append(fileList, f)
+		}
+	}
+	return fileList, dirList, err
 }
