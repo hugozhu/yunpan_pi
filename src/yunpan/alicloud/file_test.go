@@ -26,6 +26,7 @@ func create_file(name string, size int) (string, error) {
 }
 
 func TestFileUpload(t *testing.T) {
+	os.Mkdir(client.LocalBaseDir, 0755)
 	random_filename := fmt.Sprintf("testfile_%d.txt", time.Now().Unix())
 	file := filepath.Join(client.LocalBaseDir, random_filename)
 	downloaded_file := filepath.Join(client.LocalBaseDir, "downloaded_"+random_filename)

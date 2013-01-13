@@ -15,10 +15,11 @@ import (
 const DEFAULT_CHUNK_SIZE = 2097143
 
 type Client struct {
-	AccessToken   string
-	BaseApiURL    string
-	LocalBaseDir  string
-	RemoteBaseDir string
+	AccessToken     string
+	BaseApiURL      string
+	LocalBaseDir    string
+	RemoteBaseDir   string
+	RemoteBaseDirId int64
 }
 
 type FileList struct {
@@ -37,7 +38,7 @@ type Operationable struct {
 type Folder struct {
 	Name       string
 	Id         int64
-	ModifyTime int32
+	ModifyTime int64
 	Operation  int
 	ResultCode int
 	Suc        bool
@@ -56,25 +57,41 @@ type File struct {
 	ModifyTime int64
 }
 
+func (f *File) GetFullName() string {
+	s := f.FileName
+	if f.Extension != "" {
+		s = s + "." + f.Extension
+	}
+	return s
+}
+
+func (f *FileInfo) GetFullName() string {
+	s := f.FileName
+	if f.Extension != "" {
+		s = s + "." + f.Extension
+	}
+	return s
+}
+
 type FileInfo struct {
 	ChangedBy     int64    `json:"changedBy"`
 	Chunks        []*Chunk `json:"chunks"`
 	DirId         int64    `json:"dirId"`
 	Direct        bool     `json:"direct"`
 	Extension     string   `json:"extension"`
-	FileAttribute int32
-	FileName      string `json:"fileName"`
-	FullName      string `json:"fullName"`
-	Id            int64  `json:"id"`
-	Md5           string `json:"md5"`
-	ModifyTime    int64  `json:"modifyTime"`
-	Operation     int    `json:"operation"`
-	PlatformInfo  int    `json:"platformInfo"`
-	ResultCode    int    `json:"resultCode"`
-	Size          int64  `json:"size"`
-	Suc           bool   `json:"suc"`
-	UpdateVersion int64  `json:"updateVersion"`
-	Version       int64  `json:"version"`
+	FileAttribute int32    `json:"fileAttribute"`
+	FileName      string   `json:"fileName"`
+	FullName      string   `json:"fullName"`
+	Id            int64    `json:"id"`
+	Md5           string   `json:"md5"`
+	ModifyTime    int64    `json:"modifyTime"`
+	Operation     int      `json:"operation"`
+	PlatformInfo  int      `json:"platformInfo"`
+	ResultCode    int      `json:"resultCode"`
+	Size          int64    `json:"size"`
+	Suc           bool     `json:"suc"`
+	UpdateVersion int64    `json:"updateVersion"`
+	Version       int64    `json:"version"`
 }
 
 type Chunk struct {

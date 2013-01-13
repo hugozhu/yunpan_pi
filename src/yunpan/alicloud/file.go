@@ -8,13 +8,14 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	"fs"
 	"io"
 	"net/url"
 	"os"
 	"path/filepath"
 )
 
-func (c *Client) CreateFile(dirId int64, file string) (*FileInfo, error) {
+func (c *Client) prepare_file(id int64, dirId int64, file string, current_fileInfo *FileInfo) *FileInfo {
 	filename := filepath.Base(file)
 	extension := filepath.Ext(file)
 
@@ -31,6 +32,7 @@ func (c *Client) CreateFile(dirId int64, file string) (*FileInfo, error) {
 	}
 	chunks, md5 := makeChunks(file)
 	f := &FileInfo{
+		Id:            id,
 		DirId:         dirId,
 		FileName:      filename[0 : len(filename)-len(extension)],
 		ChangedBy:     61401,
@@ -44,8 +46,29 @@ func (c *Client) CreateFile(dirId int64, file string) (*FileInfo, error) {
 		FileAttribute: int32(perm),
 	}
 
+	if current_fileInfo != nil {
+		f.Version = current_fileInfo.Version
+	}
+
+	return f
+}
+
+func (c *Client) ModifyFile(id int64, dirId int64, file string, current_fileInfo *FileInfo) (*FileInfo, error) {
+	f := c.prepare_file(id, dirId, file, current_fileInfo)
 	j, _ := json.Marshal(f)
 
+	params := &url.Values{}
+	params.Set("file", string(j))
+	result, err := c.PostCall("/upload/modify", params)
+	if err != nil {
+		return nil, err
+	}
+	return parse_fileinfo_result(result, func() string { return fmt.Sprintf("Failed to modify file: %d %d %s", id, dirId, file) })
+}
+
+func (c *Client) CreateFile(dirId int64, file string) (*FileInfo, error) {
+	f := c.prepare_file(0, dirId, file, nil)
+	j, _ := json.Marshal(f)
 	params := &url.Values{}
 	params.Set("file", string(j))
 	result, err := c.PostCall("/upload/create", params)
@@ -141,9 +164,8 @@ func (c *Client) CommitUpload(id int64, version int64) (*FileInfo, error) {
 	if err != nil {
 		return nil, err
 	}
-	var fileInfo FileInfo
-	json.Unmarshal(result, &fileInfo)
-	return &fileInfo, err
+
+	return parse_fileinfo_result(result, func() string { return fmt.Sprintf("Failed to commit upload: %d %d", id, version) })
 }
 
 func parse_fileinfo_result(result []byte, f func() string) (*FileInfo, error) {
@@ -225,11 +247,7 @@ func (c *Client) DownloadChunk(chunkId int64) ([]byte, error) {
 
 func (c *Client) DownloadFile(fileInfo *FileInfo, file_path string) error {
 	if file_path == "" {
-		if fileInfo.Extension != "" {
-			file_path = fileInfo.FileName + "." + fileInfo.Extension
-		} else {
-			file_path = fileInfo.FileName
-		}
+		panic("file path can't be empty, it should be .../" + fileInfo.GetFullName())
 	}
 	perm := fileInfo.FileAttribute
 	if perm < 1 {
@@ -255,6 +273,10 @@ func (c *Client) DownloadFile(fileInfo *FileInfo, file_path string) error {
 			panic(err)
 		}
 		err = w.Flush()
+	}
+
+	if fileInfo.ModifyTime > 0 {
+		fs.ChangeModTime(file_path, fileInfo.ModifyTime/1000)
 	}
 	return err
 }
