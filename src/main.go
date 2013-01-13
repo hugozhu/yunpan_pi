@@ -2,7 +2,7 @@ package main
 
 import (
 	"fs"
-	"log"
+	"mylog"
 	"os"
 	"path/filepath"
 	"strings"
@@ -10,14 +10,18 @@ import (
 )
 
 var c = &alicloud.Client{
-	AccessToken:     alicloud.GetAccessToken(),
+	AccessToken:     alicloud.GetAccessToken(), //oauth token, get yours from ali clould drive api doc: http://api.yunpan.alibaba.com/
 	BaseApiURL:      "http://api.yunpan.alibaba.com/api",
-	LocalBaseDir:    filepath.Join(os.Getenv("PWD"), "local_backup"),
-	RemoteBaseDir:   "working/cosocket/lua",
-	RemoteBaseDirId: 3094091,
+	LocalBaseDir:    filepath.Join(os.Getenv("PWD"), "local_backup"), //the folder you want to sync with cloud disk
+	RemoteBaseDir:   "working/cosocket/lua",                          //the sub folder you want to sync with local disk
+	RemoteBaseDirId: 3094091,                                         //the sub folder Id, can be set to 0
 }
 
+var log = mylog.New(os.Stdout)
+
 func init() {
+	log.DebugEnabled = true
+
 	if c.RemoteBaseDirId > 0 {
 		return
 	}
@@ -82,13 +86,13 @@ func SyncFolder(dirId int64, dirPath string, dirModTime int64) {
 			modTime1 = fileInfo1.ModTime().Unix()
 		}
 
-		log.Println("[debug]", localFilePath, modTime1, modTime2)
+		log.Debugf("+ %s local timestamp: %d remote: %d", localFilePath, modTime1, modTime2)
 
 		if modTime2 > modTime1 {
 			fileInfo2, err := c.FileInfo(remoteFile.Id, "", 3)
 			panic_if_error(err)
 
-			log.Println("[info] downloaded:", localFilePath)
+			log.Info("Download:", localFilePath)
 			fileInfo2.ModifyTime = remoteFile.ModifyTime
 			c.DownloadFile(fileInfo2, localFilePath)
 		} else if modTime1 > modTime2 {
@@ -162,7 +166,8 @@ func upload_file(localFilePath string, dirId int64, fileInfo *alicloud.FileInfo)
 	for _, chunk := range fileInfo.Chunks {
 		r, e := c.UploadChunk(chunk.Id, localFilePath, offset, chunk.Size)
 		if !r || e != nil {
-			log.Fatal(e)
+			log.Error(e)
+			panic(e)
 		}
 		offset += chunk.Size
 	}
@@ -171,12 +176,12 @@ func upload_file(localFilePath string, dirId int64, fileInfo *alicloud.FileInfo)
 	//change local file's last modify time, so we don't need sync next time
 	newModTime := fileInfo.ModifyTime / 1000
 	fs.ChangeModTime(localFilePath, newModTime)
-	log.Println("[info] Upload", fileInfo.GetFullName(), fileInfo.Version, newModTime, fileInfo.ModifyTime/1000)
+	log.Info("Upload:", fileInfo.GetFullName(), fileInfo.Version, newModTime, fileInfo.ModifyTime/1000)
 }
 
 func main() {
-	log.Println("[info] sync manager started at: ", c.RemoteBaseDirId)
+	log.Info("Sync manager started at: ", c.RemoteBaseDirId)
 	SyncFolder(c.RemoteBaseDirId, c.LocalBaseDir, 0)
-	log.Println("[info] done")
+	log.Info("Done")
 
 }
