@@ -177,4 +177,6 @@ func upload_file(localFilePath string, dirId int64, fileInfo *alicloud.FileInfo)
 func main() {
 	log.Println("[info] sync manager started at: ", c.RemoteBaseDirId)
 	SyncFolder(c.RemoteBaseDirId, c.LocalBaseDir, 0)
+	log.Println("[info] done")
+
 }
