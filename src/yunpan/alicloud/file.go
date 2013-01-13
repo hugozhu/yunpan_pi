@@ -253,7 +253,7 @@ func (c *Client) DownloadFile(fileInfo *FileInfo, file_path string) error {
 	if perm < 1 {
 		perm = 0755
 	}
-	f, err := os.OpenFile(file_path, os.O_RDWR|os.O_CREATE|os.O_TRUNC, os.FileMode(perm))
+	f, err := os.OpenFile(file_path+".tmp", os.O_RDWR|os.O_CREATE|os.O_TRUNC, os.FileMode(perm))
 	if err != nil {
 		panic(err)
 	}
@@ -276,6 +276,7 @@ func (c *Client) DownloadFile(fileInfo *FileInfo, file_path string) error {
 	}
 
 	if fileInfo.ModifyTime > 0 {
+		os.Rename(file_path+".tmp", file_path)
 		fs.ChangeModTime(file_path, fileInfo.ModifyTime/1000)
 	}
 	return err

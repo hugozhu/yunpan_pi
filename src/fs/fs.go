@@ -22,7 +22,7 @@ func ChangeModTime(path string, unix_time int64) error {
 	return os.Chtimes(path, mtime, mtime)
 }
 
-func ListFiles(path string) ([]os.FileInfo, []os.FileInfo, error) {
+func ListFiles(path string, accept_filter func(os.FileInfo) bool) ([]os.FileInfo, []os.FileInfo, error) {
 	files, err := ioutil.ReadDir(path)
 	if err != nil {
 		return nil, nil, err
@@ -30,6 +30,9 @@ func ListFiles(path string) ([]os.FileInfo, []os.FileInfo, error) {
 	dirList := make([]os.FileInfo, 0)
 	fileList := make([]os.FileInfo, 0)
 	for _, f := range files {
+		if !accept_filter(f) {
+			continue
+		}
 		if f.IsDir() {
 			dirList = append(dirList, f)
 		} else {

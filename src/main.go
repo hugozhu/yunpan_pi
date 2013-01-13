@@ -19,6 +19,8 @@ var c = &alicloud.Client{
 
 var log = mylog.New(os.Stdout)
 
+var IgnoreFileExtensions = []string{"tmp", "swp"}
+
 func init() {
 	log.DebugEnabled = true
 
@@ -59,6 +61,14 @@ func panic_if_error(err error) {
 	if err != nil {
 		panic(err)
 	}
+}
+
+func accept_filter(s os.FileInfo) bool {
+	ext := filepath.Ext(s.Name())
+	if !s.IsDir() && ext == ".tmp" {
+		return false
+	}
+	return true
 }
 
 func SyncFolder(dirId int64, dirPath string, dirModTime int64) {
@@ -113,7 +123,7 @@ func SyncFolder(dirId int64, dirPath string, dirModTime int64) {
 	}
 
 	//upload new files from local to cloud
-	myFiles, myFolders, _ := fs.ListFiles(dirPath)
+	myFiles, myFolders, _ := fs.ListFiles(dirPath, accept_filter)
 
 	for _, f := range myFiles {
 		localFilePath := filepath.Join(dirPath, f.Name())
@@ -142,7 +152,7 @@ func SyncFolder(dirId int64, dirPath string, dirModTime int64) {
 }
 
 func upload_folder(localDirPath string, dirId int64) {
-	myFiles, myFolders, err := fs.ListFiles(localDirPath)
+	myFiles, myFolders, err := fs.ListFiles(localDirPath, accept_filter)
 	panic_if_error(err)
 	for _, f := range myFiles {
 		localFilePath := filepath.Join(localDirPath, f.Name())
@@ -173,7 +183,7 @@ func upload_file(localFilePath string, dirId int64, fileInfo *alicloud.FileInfo)
 	}
 	fileInfo, err := c.CommitUpload(fileInfo.Id, fileInfo.UpdateVersion)
 	panic_if_error(err)
-	//change local file's last modify time, so we don't need sync next time
+	//update local file's last modified time, so we don't need sync next time
 	newModTime := fileInfo.ModifyTime / 1000
 	fs.ChangeModTime(localFilePath, newModTime)
 	log.Info("Upload:", fileInfo.GetFullName(), fileInfo.Version, newModTime, fileInfo.ModifyTime/1000)
