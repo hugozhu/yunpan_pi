@@ -15,7 +15,10 @@ import (
 )
 
 func GetAccessToken() string {
-	bytes, _ := ioutil.ReadFile(filepath.Join(os.Getenv("PWD"), "token"))
+	bytes, err := ioutil.ReadFile(filepath.Join(os.Getenv("PWD"), "token"))
+	if err != nil || len(bytes) < 32 {
+		panic(filepath.Join(os.Getenv("PWD"), "token") + " is not valid OAuth access token")
+	}
 	token := string(bytes)[0:32]
 	return token
 }

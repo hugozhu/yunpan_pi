@@ -10,6 +10,7 @@ import (
 	"net/url"
 	"path/filepath"
 	"strings"
+	"yunpan"
 )
 
 const DEFAULT_CHUNK_SIZE = 2097143
