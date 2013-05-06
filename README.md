@@ -20,3 +20,7 @@
     * 更新
 * 累计5分钟的变化事件，生成SyncJob
     * 提交SyncJob执行
+
+ABOUT
+=====
+A command line based cloud disk client designed for Raspberry Pi, implemented in Go. It should also work on other platforms.
