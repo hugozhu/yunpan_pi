@@ -19,7 +19,7 @@ var c = &alicloud.Client{
 
 var log = mylog.New(os.Stdout)
 
-var IgnoreFileExtensions = []string{"tmp", "swp"}
+var IgnoreFileExtensions = []string{".tmp", ".swp"}
 
 func init() {
 	log.DebugEnabled = true
@@ -65,8 +65,12 @@ func panic_if_error(err error) {
 
 func accept_filter(s os.FileInfo) bool {
 	ext := filepath.Ext(s.Name())
-	if !s.IsDir() && ext == ".tmp" {
-		return false
+	if !s.IsDir() {
+		for _, p := range IgnoreFileExtensions {
+			if ext == p {
+				return false
+			}
+		}
 	}
 	return true
 }
